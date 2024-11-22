@@ -11,6 +11,7 @@ namespace SmartSASMod
     [HarmonyPatch(typeof(Rocket), "GetStopRotationTurnAxis")]
     class CustomSAS
     {
+        private static double _lastTime=0;
         static float Postfix(float result, Rocket __instance)
         {
 
@@ -20,9 +21,20 @@ namespace SmartSASMod
             if (!WorldTime.main.realtimePhysics.Value || !__instance.hasControl.Value)
                 return result;
 
+            double thisTime=SFS.World.WorldTime.main.worldTime;
             float angularVelocity = __instance.rb2d.angularVelocity;
             float angleOffset = GUI.GetAngleOffsetFloat();
             float currentRotation = GUI.NormaliseAngle(__instance.GetRotation());
+            double timeStep=0;
+            if (_lastTime==0 || _lastTime>thisTime)
+            {
+                _lastTime=thisTime;
+            }
+            else
+            {
+                timeStep= thisTime-_lastTime;
+                _lastTime=thisTime;
+            }
 
             float TargetRotationToTorque(float targetAngle)
             {
@@ -35,22 +47,29 @@ namespace SmartSASMod
                 float mass = __instance.rb2d.mass;
                 if (mass > 200f)
                     torque /= Mathf.Pow(mass / 200f, 0.35f);
-                
+
                 float maxAcceleration = torque * Mathf.Rad2Deg / mass;
                 float stoppingTime = Mathf.Abs(angularVelocity / maxAcceleration);
                 float currentTime = Mathf.Abs(deltaAngle / angularVelocity);
-                
+                float strength=1.0f;
+
+                if (timeStep>0.001f &&  timeStep<1f)
+                {
+                    strength=Mathf.Pow(Mathf.Max(1.0f,Mathf.Abs(stoppingTime-currentTime)/(float)timeStep),2);
+                }
+
                 if (stoppingTime > currentTime)
                 {
-                    return Mathf.Sign(angularVelocity);
+                    return Mathf.Sign(angularVelocity)*strength;
                 }
                 else
                 {
-                    return -Mathf.Sign(deltaAngle);
+                    return -Mathf.Sign(deltaAngle)*strength;
                 }
             }
 
             float targetRotation;
+
             switch (sas.currentDirection)
             {
                 case DirectionMode.Default:
@@ -145,6 +164,6 @@ namespace SmartSASMod
 
             return result;
         }
-        
+
     }
 }
