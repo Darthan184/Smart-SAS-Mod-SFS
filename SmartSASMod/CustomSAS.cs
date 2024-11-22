@@ -14,7 +14,6 @@ namespace SmartSASMod
         private static double _lastTime=0;
         static float Postfix(float result, Rocket __instance)
         {
-
             SASComponent sas = __instance.GetOrAddComponent<SASComponent>();
             __instance.rb2d.angularDrag = 0.05f;
 
